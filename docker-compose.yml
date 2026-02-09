@@ -1,0 +1,85 @@
+
+
+# définition du service global
+services:
+  # Pour que notre API tourne, on a besoin que PostgreSQL fonctionne, on va commencer par configurer PSQL avant de configurer l'API
+  database:
+    image: postgres:17 # l'image spécifiée sera récupérée via dockerHub et installée sur notre machine
+    restart: unless-stopped # redémare automatiquement mon service en cas de crash (à moins qu'on l'éteigne manuellement)
+    networks:  
+      - oquiz-network # on définit le network qui va connecter nos différents containers, on va devoir le spécifier dans chaque containers
+    volumes:
+      - oquiz-volume:/var/lib/postgresql/data # pour avoir une persistence de données, on va créer un volume dans lequel les données se stockeront, et resteront même une fois qu'on arrête notre container, pour rappel: les images ne stockent rien une fois arrétées, c'est pour ça qu'on utilise un volume
+    environment: # ici, on va spécifier les variables d'environnement qui permettent de faire tourner PSQL
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${PG_LOCAL_PORT}:5432 # si on abesoin de contacter la BDD depuis l'extérieur on peut utiliser un binding de port (facultatif)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oquiz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: # permet de définir de quelle manière construire le projet 
+      context: ./api # le dossier où on va trouver le code à build
+      dockerfile: Dockerfile # le dockerfile à utiliser pour construire notre API
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - ${API_LOCAL_PORT}:3000
+    networks:
+      - oquiz-network
+    depends_on:
+      database:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+
+    restart: unless-stopped
+    ports:
+      - ${CLIENT_LOCAL_PORT}:80
+    networks:
+      - oquiz-network
+
+  adminer:  # adminer permet de consulter la BDD via une interface visuelle, qui rend l'exploration des données plus fluide 
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - ${ADMINER_LOCAL_PORT}:8080
+    networks:
+      - oquiz-network
+
+networks: # networks est facultatif, on le nomme afin de pouvoir dans le cas où on aurait plusieurs docker-compose, connecter les != réseaux, sinon, par défaut, docker-compose génerera par défaut un network qui reliera les différents containers
+  oquiz-network:
+
+volumes: # on définit le volume qui sera utilisé par postgresql (mentionné ci-dessus dans database)
+  oquiz-volume:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

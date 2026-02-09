@@ -1,0 +1,78 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  firstname  String
+  lastname   String
+  email      String  @unique()
+  password   String
+  avatar_url String?
+
+  role           Role           @default(member)
+  refresh_tokens RefreshToken[]
+  tags           Tag[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("user") // Correspondance entre le model User dans le code et la table "user" dans la BDD
+}
+
+model Level {
+  id Int @id @default(autoincrement())
+
+  name String @unique()
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("level")
+}
+
+model RefreshToken {
+  id Int @id @default(autoincrement())
+
+  token String
+
+  user    User @relation(fields: [user_id], references: [id]) // Alias
+  user_id Int // Foreign key
+
+  issued_at  DateTime @default(now())
+  expires_at DateTime
+
+  @@map("refresh_token")
+}
+
+model Tag {
+  id Int @id @default(autoincrement())
+
+  name  String
+  color String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  parent_tag    Tag?  @relation("TagToTag", fields: [parent_tag_id], references: [id])
+  children_tags Tag[] @relation("TagToTag")
+  parent_tag_id Int?
+
+  author    User @relation(fields: [author_id], references: [id])
+  author_id Int
+
+  @@map("tags")
+}
+
+enum Role {
+  member
+  author
+  admin
+}

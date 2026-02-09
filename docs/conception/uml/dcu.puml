@@ -1,0 +1,45 @@
+@startuml
+left to right direction
+
+actor visitor
+actor member
+actor author
+actor admin
+
+visitor <|-- member
+member <|-- author
+author <|-- admin
+
+rectangle "Oquiz" {
+  usecase "Accéder à l'accueil" as UC1
+  usecase "Créer un compte" as UC2
+  usecase "Se connecter" as UC3
+
+  usecase "Voir la liste des quiz" as UC4
+  usecase "Jouer des quiz" as UC5
+  usecase "Rechercher un quiz" as UC6
+
+  usecase "Gérer les quiz" as UC7
+
+  usecase "Gérer les membres" as UC8
+  usecase "Gérer les thèmes" as UC9
+  usecase "Gérer les niveaux" as UC10
+}
+
+visitor --> UC1
+visitor --> UC2
+visitor --> UC3
+
+member --> UC4
+member --> UC5
+member --> UC6
+
+author --> UC7
+
+admin --> UC8
+admin --> UC9
+admin --> UC10
+
+
+
+@enduml

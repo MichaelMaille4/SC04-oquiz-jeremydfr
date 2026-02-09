@@ -1,0 +1,41 @@
+@startuml "Prise de contact par mail via un formulaire"
+
+actor Utilisateur
+participant "Interface Web" as UI
+participant "Serveur Backend" as API
+database "Base de données" as DB
+participant "Service Mail" as Mailer
+
+== Consultation ==
+Utilisateur -> UI : Accède à la page de contact
+UI -> Utilisateur : Affiche le formulaire de contact
+
+== Saisie du formulaire ==
+Utilisateur -> UI : Remplit et soumet le formulaire (nom, email, message)
+UI -> API : Envoie les données du formulaire
+
+== Vérification du formulaire ==
+API -> API : Vérifie la validité des champs (format email, champs requis, etc.)
+API -> UI : Retourne erreurs de validation si présentes
+UI -> Utilisateur : Affiche les erreurs à corriger
+... si erreurs corrigées ...
+Utilisateur -> UI : Soumet à nouveau le formulaire
+UI -> API : Envoie les données corrigées
+
+== Vérification de l'existence du mail ==
+API -> DB : Vérifie si l'email existe déjà
+DB --> API : Résultat de la recherche
+
+alt Email déjà enregistré
+    API -> UI : Retourne message "Cet email a déjà été utilisé"
+    UI -> Utilisateur : Affiche le message d'erreur
+else Nouvel email
+    API -> DB : Sauvegarde du prospect (nom, email, message)
+    DB --> API : Confirmation d’enregistrement
+    API -> Mailer : Envoi du mail de confirmation
+    Mailer --> API : Confirmation d’envoi
+    API -> UI : Retour succès ("Mail de confirmation envoyé")
+    UI -> Utilisateur : Affiche message de confirmation
+end
+
+@enduml
