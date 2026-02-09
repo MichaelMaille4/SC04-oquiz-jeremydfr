@@ -36,7 +36,7 @@ export const logger = createLogger({
   rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' })],
 });
 
-if (process.env.NODE_ENV === 'developement') {
+if (process.env.NODE_ENV === 'development') {
   logger.add(
     new transports.Console({
       format: format.combine(
