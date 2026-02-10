@@ -15,7 +15,7 @@ services:
       - ${API_PORT}:3000
     volumes:
       - ./api:/app
-      - /app/node_modules
+      - api-node-modules:/app/node_modules
     networks:
       - oquiz-network
     depends_on:
@@ -32,7 +32,7 @@ services:
       - ${CLIENT_PORT}:5173
     volumes:
       - ./client:/app
-      - /app/node_modules
+      - client-node-modules:/app/node_modules
     networks:
       - oquiz-network
 
@@ -48,7 +48,7 @@ services:
       - ${LOGS_PORT}:3000
     volumes:
       - ./logs-service:/app
-      - /app/node_modules
+      - logs-node-modules:/app/node_modules
     networks:
       - oquiz-network
     depends_on:
@@ -122,4 +122,7 @@ networks:
 volumes:
   postgres-volume:
   mongodb-volume:
+  api-node-modules:
+  client-node-modules:
+  logs-node-modules:
 
