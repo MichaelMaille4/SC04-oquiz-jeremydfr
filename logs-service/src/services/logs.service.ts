@@ -18,11 +18,9 @@ export async function createLog(data: createLogRequest) {
     await client.db().collection('logs').insertOne(data);
 }
 
-// TODO : Check Promise<LogDocument>
-export async function getLogs(){
+export async function getLogs(): Promise<LogDocument[]> {
     const client = await getClient();
-    
-    const logs = await client.db().collection('logs').find().toArray();
+    const logs = await client.db().collection('logs').find<LogDocument>({}).toArray();
 
     return logs;
 }
