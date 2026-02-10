@@ -13,7 +13,7 @@ export const logLevelSchema = z.enum([
 export const createLogSchema = z.looseObject({
     level: logLevelSchema,
     message: z.string().min(1, 'Le message est requis').max(10000, 'Message trop long'),
-    service: z.string().min(1, 'Le service est requis').max(100).optional(),
+    service: z.string().min(1, 'Le service est requis').max(100),
     version: z.string().max(50).optional(),
     stackTrace: z.string().optional(),
     userId: z.string().optional(),
