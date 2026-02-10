@@ -1,8 +1,9 @@
 export const config = {
-    databaseUrl: getEnv(process.env.DATABASE_URL, "DATABASE_URL")
-}
+  databaseUrl: getEnv(() => process.env.DATABASE_URL, "DATABASE_URL"),
+};
 
-function getEnv(value: string | undefined, variableName: string) {
-  if (!value) { throw new Error(`Missing env variable: ${variableName}`); }
+function getEnv(getter: () => string | undefined, variableName: string) {
+  const value = getter();
+  if (!value) throw new Error(`Missing env variable: ${variableName}`);
   return value;
 }

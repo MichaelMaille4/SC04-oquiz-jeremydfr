@@ -8,7 +8,6 @@ import { router as authRouter } from "./auth.router.ts";
 import { router as levelsRouter } from "./levels.router.ts";
 import { router as usersRouter } from "./users.router.ts";
 import { router as tagsRouter } from "./tags.router.ts";
-import { router as logsRouter } from "./logs.router.ts";
 
 export const router = Router();
 
@@ -16,7 +15,6 @@ router.use(authRouter);
 router.use(levelsRouter);
 router.use(usersRouter);
 router.use(tagsRouter);
-router.use("/logs", logsRouter);
 
 // Documentation swagger
 const spec = swaggerJsdoc({
