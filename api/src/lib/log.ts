@@ -1,14 +1,16 @@
 import { createLogger, format, transports } from "winston";
+import { config } from "../../config.ts";
 
 export const logger = createLogger({
   level: 'info',
+  // defaultMeta : modifie les données envoyé pour les transports
+  defaultMeta: { service: 'oquiz', pid: process.pid },
   format: format.combine(
     format.timestamp(),
     format.errors({ stack: true }),
     format.json(),
-    format.printf(({timestamp, level, message, ...meta}) => {
+    format.printf(({level, message, ...meta}) => {
       return JSON.stringify({
-        timestamp,
         level,
         message,
         service: 'oquiz',
@@ -30,23 +32,13 @@ export const logger = createLogger({
       maxsize: 5242880, // 5MB
       maxFiles: 3,
       tailable: true
+    }),
+    new transports.Http({
+      host: config.logsServiceHost, // Attention ici à ne pas mettre http:// ou https:// !!!
+      port: Number(config.logsServicePort),
+      path: '/api/logs',
     })
   ],
   exceptionHandlers: [new transports.File({ filename: 'logs/exceptions.log' })],
   rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' })],
 });
-
-if (process.env.NODE_ENV === 'developement') {
-  logger.add(
-    new transports.Console({
-      format: format.combine(
-        format.colorize(),
-        format.simple(),
-        format.printf(({ timestamp, level, message, ...meta }) => {
-          const metaString = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
-          return `${timestamp} [${level}] : ${message} ${metaString}`;
-        })
-      )
-    })
-  );
-}

@@ -7,6 +7,10 @@ services:
       - NODE_ENV=${API_NODE_ENV}
       - PORT=3000
       - DATABASE_URL=${API_DATABASE_URL}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}                                                                                                       
+      - JWT_SECRET=${JWT_SECRET:-jwt-secret} 
+      - LOGS_SERVICE_HOST=${LOGS_SERVICE_HOST}
+      - LOGS_SERVICE_PORT=${LOGS_SERVICE_PORT}
     ports:
       - ${API_PORT}:3000
     volumes:
@@ -92,9 +96,9 @@ services:
     networks:
       - oquiz-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@localhost:${MONGO_PORT}/?authSource=${MONGO_INITDB_DATABASE} --quiet
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   mongo-express:
