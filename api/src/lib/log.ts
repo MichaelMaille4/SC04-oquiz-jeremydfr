@@ -6,9 +6,8 @@ export const logger = createLogger({
     format.timestamp(),
     format.errors({ stack: true }),
     format.json(),
-    format.printf(({timestamp, level, message, ...meta}) => {
+    format.printf(({level, message, ...meta}) => {
       return JSON.stringify({
-        timestamp,
         level,
         message,
         service: 'oquiz',
@@ -30,23 +29,21 @@ export const logger = createLogger({
       maxsize: 5242880, // 5MB
       maxFiles: 3,
       tailable: true
+    }),
+    // TODO : Check HTTP transport
+    new transports.Http({
+      port: 3001,
+      path: '/api/logs',
+      format: format.combine(
+        format.json(),
+        format.printf(() => {
+          return JSON.stringify({
+            test: "test"
+          });
+        }),
+      )
     })
   ],
   exceptionHandlers: [new transports.File({ filename: 'logs/exceptions.log' })],
   rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' })],
 });
-
-if (process.env.NODE_ENV === 'development') {
-  logger.add(
-    new transports.Console({
-      format: format.combine(
-        format.colorize(),
-        format.simple(),
-        format.printf(({ timestamp, level, message, ...meta }) => {
-          const metaString = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
-          return `${timestamp} [${level}] : ${message} ${metaString}`;
-        })
-      )
-    })
-  );
-}

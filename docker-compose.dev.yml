@@ -9,11 +9,12 @@ services:
       - DATABASE_URL=${API_DATABASE_URL}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}                                                                                                       
       - JWT_SECRET=${JWT_SECRET:-jwt-secret} 
+      - LOGS_SERVICE_HOST=${LOGS_SERVICE_HOST}
+      - LOGS_SERVICE_PORT=3001
     ports:
       - ${API_PORT}:3000
     volumes:
       - ./api:/app
-      - /app/node_modules
     networks:
       - oquiz-network
     depends_on:
