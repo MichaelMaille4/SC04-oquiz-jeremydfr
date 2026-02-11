@@ -7,8 +7,8 @@ services:
       - NODE_ENV=${API_NODE_ENV}
       - PORT=3000
       - DATABASE_URL=${API_DATABASE_URL}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}                                                                                                       
-      - JWT_SECRET=${JWT_SECRET:-jwt-secret} 
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET:-jwt-secret}
       - LOGS_SERVICE_HOST=${LOGS_SERVICE_HOST}
       - LOGS_SERVICE_PORT=${LOGS_SERVICE_PORT}
     ports:
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
 
   mongodb:
-    image: mongo:7
+    image: mongo:4.4
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
@@ -111,7 +111,7 @@ services:
     networks:
       - oquiz-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -137,8 +137,11 @@ networks:
 volumes:
   postgres-volume:
   mongodb-volume:
+<<<<<<< HEAD
   api-node-modules:
   client-node-modules:
   logs-node-modules:
   files-node-modules:
 
+=======
+>>>>>>> origin/SC04-oquiz-MichaelMaille

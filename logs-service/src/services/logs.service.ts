@@ -1,11 +1,13 @@
-import { ObjectId, type Filter } from "mongodb";
+import { ObjectId } from "mongodb";
 import { getClient } from "../lib/db.ts";
 import type {
-  CreateLogRequest,
+  createLogRequest,
   LogLevel,
-  LogFilterRequest,
-  LogStatFilterRequest,
+  LogsQuery,
+  LogsStatsQuery,
 } from "../validations/logs.validation.ts";
+import type { z } from "zod";
+import { listLogsQuerySchema } from "../validations/logs.validation.ts";
 
 export interface LogDocument {
   _id: ObjectId;
@@ -25,18 +27,20 @@ export interface LogDocument {
   metadata?: unknown;
 }
 
-export async function createLog(data: CreateLogRequest) {
+type ListLogsQuery = z.infer<typeof listLogsQuerySchema>;
+
+export async function createLog(data: createLogRequest) {
   const client = await getClient();
   await client.db().collection("logs").insertOne(data);
 }
 
-export async function getLogs(query: LogFilterRequest) {
+export async function getLogs(query: LogsQuery) {
   const client = await getClient();
   const collection = client.db().collection("logs");
 
   const filter: Record<string, unknown> = {};
 
-  //  Filtres simples
+  // 🔹 Filtres simples
   if (query.service) filter.service = query.service;
   if (query.level) filter.level = query.level;
   if (query.environment) filter.environment = query.environment;
@@ -44,13 +48,15 @@ export async function getLogs(query: LogFilterRequest) {
   if (query.requestId) filter.requestId = query.requestId;
   if (query.sessionId) filter.sessionId = query.sessionId;
 
-  // Filtres date
+  // 🔹 Filtres date
   if (query.startDate || query.endDate) {
     filter.timestamp = {};
-    if (query.startDate)
-      (filter.timestamp as any).$gte = query.startDate.toISOString();
-    if (query.endDate)
-      (filter.timestamp as any).$lte = query.endDate.toISOString();
+    if (query.startDate) {
+      (filter.timestamp as any).$gte = query.startDate;
+    }
+    if (query.endDate) {
+      (filter.timestamp as any).$lte = query.endDate;
+    }
   }
 
   const total = await collection.countDocuments(filter);
@@ -90,7 +96,7 @@ export async function getLogById(id: string): Promise<LogDocument | null> {
   return log;
 }
 
-export async function createManyLogs(logs: CreateLogRequest[]) {
+export async function createManyLogs(logs: createLogRequest[]) {
   const client = await getClient();
   const result = await client
     .db()
@@ -99,23 +105,28 @@ export async function createManyLogs(logs: CreateLogRequest[]) {
   return Object.values(result.insertedIds).map((_id) => ({ _id }));
 }
 
-export const createBatchLogs = createManyLogs;
-
-export async function getLogsStats(query: LogStatFilterRequest) {
+export async function getLogsStats(query: LogsStatsQuery) {
   const client = await getClient();
   const collection = client.db().collection("logs");
 
   const { service, environment, startDate, endDate } = query;
 
-  const match: Filter<LogDocument> = {};
+  const match: {
+    service?: string;
+    environment?: string;
+    timestamp?: {
+      $gte?: string;
+      $lte?: string;
+    };
+  } = {};
 
   if (service) match.service = service;
   if (environment) match.environment = environment;
 
   if (startDate || endDate) {
-    match.timestamp = {} as any;
-    if (startDate) (match.timestamp as any).$gte = startDate.toISOString();
-    if (endDate) (match.timestamp as any).$lte = endDate.toISOString();
+    match.timestamp = {};
+    if (startDate) match.timestamp.$gte = startDate;
+    if (endDate) match.timestamp.$lte = endDate;
   }
 
   const pipeline = [

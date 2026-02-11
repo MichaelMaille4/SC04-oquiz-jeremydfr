@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx --env-file=.env --watch index.ts"
+    "dev": "tsx --watch index.ts"
   },
   "keywords": [],
   "author": "",
