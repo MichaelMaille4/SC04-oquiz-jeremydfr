@@ -55,6 +55,21 @@ services:
       mongodb:
         condition: service_healthy
 
+  files-service:
+    build:
+      context: ./files-service
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=${FILES_NODE_ENV}
+      - PORT=3000
+    ports:
+      - ${FILES_PORT}:3000
+    volumes:
+      - ./files-service:/app
+      - files-node-modules:/app/node_modules
+    networks:
+      - oquiz-network
+
   postgres:
     image: postgres:17
     environment:
@@ -125,4 +140,5 @@ volumes:
   api-node-modules:
   client-node-modules:
   logs-node-modules:
+  files-node-modules:
 
