@@ -1,13 +1,11 @@
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 import { getClient } from "../lib/db.ts";
 import type {
-  createLogRequest,
+  CreateLogRequest,
   LogLevel,
-  LogsQuery,
-  LogsStatsQuery,
+  LogFilterRequest,
+  LogStatFilterRequest,
 } from "../validations/logs.validation.ts";
-import type { z } from "zod";
-import { listLogsQuerySchema } from "../validations/logs.validation.ts";
 
 export interface LogDocument {
   _id: ObjectId;
@@ -27,14 +25,12 @@ export interface LogDocument {
   metadata?: unknown;
 }
 
-type ListLogsQuery = z.infer<typeof listLogsQuerySchema>;
-
-export async function createLog(data: createLogRequest) {
+export async function createLog(data: CreateLogRequest) {
   const client = await getClient();
   await client.db().collection("logs").insertOne(data);
 }
 
-export async function getLogs(query: LogsQuery) {
+export async function getLogs(query: LogFilterRequest) {
   const client = await getClient();
   const collection = client.db().collection("logs");
 
@@ -51,12 +47,10 @@ export async function getLogs(query: LogsQuery) {
   // Filtres date
   if (query.startDate || query.endDate) {
     filter.timestamp = {};
-    if (query.startDate) {
-      (filter.timestamp as any).$gte = query.startDate;
-    }
-    if (query.endDate) {
-      (filter.timestamp as any).$lte = query.endDate;
-    }
+    if (query.startDate)
+      (filter.timestamp as any).$gte = query.startDate.toISOString();
+    if (query.endDate)
+      (filter.timestamp as any).$lte = query.endDate.toISOString();
   }
 
   const total = await collection.countDocuments(filter);
@@ -96,7 +90,7 @@ export async function getLogById(id: string): Promise<LogDocument | null> {
   return log;
 }
 
-export async function createManyLogs(logs: createLogRequest[]) {
+export async function createManyLogs(logs: CreateLogRequest[]) {
   const client = await getClient();
   const result = await client
     .db()
@@ -105,28 +99,23 @@ export async function createManyLogs(logs: createLogRequest[]) {
   return Object.values(result.insertedIds).map((_id) => ({ _id }));
 }
 
-export async function getLogsStats(query: LogsStatsQuery) {
+export const createBatchLogs = createManyLogs;
+
+export async function getLogsStats(query: LogStatFilterRequest) {
   const client = await getClient();
   const collection = client.db().collection("logs");
 
   const { service, environment, startDate, endDate } = query;
 
-  const match: {
-    service?: string;
-    environment?: string;
-    timestamp?: {
-      $gte?: string;
-      $lte?: string;
-    };
-  } = {};
+  const match: Filter<LogDocument> = {};
 
   if (service) match.service = service;
   if (environment) match.environment = environment;
 
   if (startDate || endDate) {
-    match.timestamp = {};
-    if (startDate) match.timestamp.$gte = startDate;
-    if (endDate) match.timestamp.$lte = endDate;
+    match.timestamp = {} as any;
+    if (startDate) (match.timestamp as any).$gte = startDate.toISOString();
+    if (endDate) (match.timestamp as any).$lte = endDate.toISOString();
   }
 
   const pipeline = [
