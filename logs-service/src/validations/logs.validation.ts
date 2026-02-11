@@ -27,5 +27,31 @@ export const createLogSchema = z.looseObject({
     timestamp: z.string().optional().default(new Date().toString()),
 });
 
-export type createLogRequest = z.infer<typeof createLogSchema>
+export const createBatchLogSchema = z.object({
+    logs: z.array(createLogSchema).min(1).max(1000, "Maximum 1000 logs par batch")
+});
+
+export const logFilterSchema = z.object({
+    service: z.string().optional(),
+    level: z.string().optional(),
+    environment: z.string().optional(),
+    userId: z.string().optional(),
+    requestId: z.string().optional(),
+    sessionId: z.string().optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+    limit: z.coerce.number().min(1).max(100).default(50),
+    offset: z.coerce.number().min(0).default(0)
+});
+
+export const logStatFilterSchema = z.object({
+    service: z.string().optional(),
+    environment: z.string().optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+});
+
+export type CreateLogRequest = z.infer<typeof createLogSchema>
 export type LogLevel = z.infer<typeof logLevelSchema>
+export type LogFilterRequest = z.infer<typeof logFilterSchema>
+export type LogStatFilterRequest = z.infer<typeof logStatFilterSchema>
