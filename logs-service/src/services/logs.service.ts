@@ -1,121 +1,160 @@
 import { ObjectId } from "mongodb";
 import { getClient } from "../lib/db.ts";
-import type { CreateLogRequest, LogLevel, LogFilterRequest, LogStatFilterRequest } from "../validations/logs.validation.ts";
+import type {
+  createLogRequest,
+  LogLevel,
+  LogsQuery,
+  LogsStatsQuery,
+} from "../validations/logs.validation.ts";
+import type { z } from "zod";
+import { listLogsQuerySchema } from "../validations/logs.validation.ts";
 
 export interface LogDocument {
-    _id: ObjectId,
-    timestamp: Date,
-    level: LogLevel,
-    message: string,
-    service: string,
-    version: string,
-    environment: string,
-    stackTrace?: string
+  _id: ObjectId;
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  service: string;
+  version?: string;
+  environment: string;
+  stackTrace?: string;
+  userId?: string;
+  requestId?: string;
+  sessionId?: string;
+  hostname?: string;
+  ip?: string;
+  userAgent?: string;
+  metadata?: unknown;
 }
 
-export async function createLog(data: CreateLogRequest) {
-    const client = await getClient();
-    await client.db().collection('logs').insertOne(data);
+type ListLogsQuery = z.infer<typeof listLogsQuerySchema>;
+
+export async function createLog(data: createLogRequest) {
+  const client = await getClient();
+  await client.db().collection("logs").insertOne(data);
 }
 
-// TODO : Create type for getLogs return (LogsWithPagination)
-export async function getLogs(filters: LogFilterRequest) {
-    const client = await getClient();
-    const collection = client.db().collection('logs');
+export async function getLogs(query: LogsQuery) {
+  const client = await getClient();
+  const collection = client.db().collection("logs");
 
-    // TODO : Create an interface
-    const mongoFilter: any = {};
+  const filter: Record<string, unknown> = {};
 
-    if (filters.service) mongoFilter.service = filters.service;
-    if (filters.level) mongoFilter.level = filters.level;
-    if (filters.environment) mongoFilter.environment = filters.environment;
-    if (filters.userId) mongoFilter.userId = filters.userId;
-    if (filters.requestId) mongoFilter.requestId = filters.requestId;
-    if (filters.sessionId) mongoFilter.sessionId = filters.sessionId;
+  //  Filtres simples
+  if (query.service) filter.service = query.service;
+  if (query.level) filter.level = query.level;
+  if (query.environment) filter.environment = query.environment;
+  if (query.userId) filter.userId = query.userId;
+  if (query.requestId) filter.requestId = query.requestId;
+  if (query.sessionId) filter.sessionId = query.sessionId;
 
-    if (filters.startDate || filters.endDate) {
-        mongoFilter.timestamp = {};
-        if (filters.startDate) mongoFilter.timestamp.$gte = filters.startDate;
-        if (filters.endDate) mongoFilter.timestamp.$lte = filters.endDate;
+  // Filtres date
+  if (query.startDate || query.endDate) {
+    filter.timestamp = {};
+    if (query.startDate) {
+      (filter.timestamp as any).$gte = query.startDate;
     }
-
-    // Execution des requêtes en parralèle avec Promise.all()
-    const [logs, total] = await Promise.all([
-        collection.find<LogDocument>(mongoFilter).skip(filters.offset).limit(filters.limit).toArray(),
-        collection.countDocuments(mongoFilter)
-    ]);
-
-    return {
-        logs,
-        pagination: {
-            total: total,
-            limit: filters.limit,
-            offset: filters.offset
-        }
+    if (query.endDate) {
+      (filter.timestamp as any).$lte = query.endDate;
     }
+  }
+
+  const total = await collection.countDocuments(filter);
+
+  const logs = await collection
+    .find(filter)
+    .sort({ timestamp: -1 })
+    .skip(query.offset)
+    .limit(query.limit)
+    .toArray();
+
+  const hasNext = query.offset + query.limit < total;
+  const hasPrevious = query.offset > 0;
+
+  return {
+    data: logs,
+    pagination: {
+      total,
+      limit: query.limit,
+      offset: query.offset,
+      hasNext,
+      hasPrevious,
+    },
+  };
 }
 
 export async function getLogById(id: string): Promise<LogDocument | null> {
-    const client = await getClient();
+  const client = await getClient();
 
-    const log = await client.db().collection('logs').findOne<LogDocument>({ _id: new ObjectId(id) })
+  const log = await client
+    .db()
+    .collection("logs")
+    .findOne<LogDocument>({ _id: new ObjectId(id) });
 
-    if (!log) return null;
+  if (!log) return null;
 
-    return log;
+  return log;
 }
 
-export async function createBatchLogs(logs: CreateLogRequest[]) {
-    const client = await getClient();
-
-    const logsData = await client.db().collection('logs').insertMany(logs);
-
-    return logsData;
+export async function createManyLogs(logs: createLogRequest[]) {
+  const client = await getClient();
+  const result = await client
+    .db()
+    .collection("logs")
+    .insertMany(logs, { ordered: false });
+  return Object.values(result.insertedIds).map((_id) => ({ _id }));
 }
 
-export async function getLogStats(filters: LogStatFilterRequest) {
-    const client = await getClient();
-    const collection = client.db().collection('logs');
+export async function getLogsStats(query: LogsStatsQuery) {
+  const client = await getClient();
+  const collection = client.db().collection("logs");
 
-    // TODO : Create an interface
-    const mongoFilter: any = {};
+  const { service, environment, startDate, endDate } = query;
 
-    if (filters.service) mongoFilter.service = filters.service;
-    if (filters.environment) mongoFilter.environment = filters.environment;
+  const match: {
+    service?: string;
+    environment?: string;
+    timestamp?: {
+      $gte?: string;
+      $lte?: string;
+    };
+  } = {};
 
-    if (filters.startDate || filters.endDate) {
-        mongoFilter.timestamp = {};
-        if (filters.startDate) mongoFilter.timestamp.$gte = filters.startDate;
-        if (filters.endDate) mongoFilter.timestamp.$lte = filters.endDate;
-    }
+  if (service) match.service = service;
+  if (environment) match.environment = environment;
 
-    const [totalLogs, logsByLevel, logsByService, logsByEnvironment] = await Promise.all([
-        collection.countDocuments(mongoFilter),
-        // Répartition par niveau 
-        // [
-        //     { _id: "info", count: 100 },
-        //     { _id: "error", count: 75 }
-        // ]
-        collection.aggregate([{ $match: mongoFilter }, { $group: { _id: '$level', count: { $sum: 1 } } }]).toArray(),
-        // Répartition par service
-        collection.aggregate([{ $match: mongoFilter }, { $group: { _id: '$service', count: { $sum: 1 } } }]).toArray(),
-        // Répartition par environnement
-        collection.aggregate([{ $match: mongoFilter }, { $group: { _id: '$environment', count: { $sum: 1 } } }]).toArray()
-    ]);
+  if (startDate || endDate) {
+    match.timestamp = {};
+    if (startDate) match.timestamp.$gte = startDate;
+    if (endDate) match.timestamp.$lte = endDate;
+  }
 
-    return {
-        totalLogs,
-        logCountByLevel: logsByLevel.reduce((acc, item) => {
-            acc[item._id] = item.count;
-            return acc
-        }, {} as Record<string, number>),
-        logCountByService: logsByService.reduce((acc, item) => {
-            acc[item._id] = item.count;
-            return acc
-        }, {} as Record<string, number>),
-        logCountByEnvironment: logsByEnvironment.reduce((acc, item) => {
-            acc[item._id] = item.count;
-            return acc
-        }, {} as Record<string, number>)
-    }
+  const pipeline = [
+    { $match: match },
+    {
+      $facet: {
+        totalLogs: [{ $count: "count" }],
+
+        byLevel: [{ $group: { _id: "$level", count: { $sum: 1 } } }],
+
+        byService: [{ $group: { _id: "$service", count: { $sum: 1 } } }],
+
+        byEnvironment: [
+          { $group: { _id: "$environment", count: { $sum: 1 } } },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await collection.aggregate(pipeline).toArray();
+
+  const toObject = (arr: any[]) =>
+    Object.fromEntries(arr.map(({ _id, count }) => [_id, count]));
+
+  return {
+    totalLogs: result.totalLogs[0]?.count ?? 0,
+    logCountByLevel: toObject(result.byLevel),
+    logCountByService: toObject(result.byService),
+    logCountByEnvironment: toObject(result.byEnvironment),
+  };
 }
