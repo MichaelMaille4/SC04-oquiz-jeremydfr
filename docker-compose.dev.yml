@@ -15,7 +15,7 @@ services:
       - ${API_PORT}:3000
     volumes:
       - ./api:/app
-      - /app/node_modules
+      - api-node-modules:/app/node_modules
     networks:
       - oquiz-network
     depends_on:
@@ -32,7 +32,7 @@ services:
       - ${CLIENT_PORT}:5173
     volumes:
       - ./client:/app
-      - /app/node_modules
+      - client-node-modules:/app/node_modules
     networks:
       - oquiz-network
 
@@ -48,12 +48,27 @@ services:
       - ${LOGS_PORT}:3000
     volumes:
       - ./logs-service:/app
-      - /app/node_modules
+      - logs-node-modules:/app/node_modules
     networks:
       - oquiz-network
     depends_on:
       mongodb:
         condition: service_healthy
+
+  files-service:
+    build:
+      context: ./files-service
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=${FILES_NODE_ENV}
+      - PORT=3000
+    ports:
+      - ${FILES_PORT}:3000
+    volumes:
+      - ./files-service:/app
+      - files-node-modules:/app/node_modules
+    networks:
+      - oquiz-network
 
   postgres:
     image: postgres:17
@@ -122,3 +137,11 @@ networks:
 volumes:
   postgres-volume:
   mongodb-volume:
+<<<<<<< HEAD
+  api-node-modules:
+  client-node-modules:
+  logs-node-modules:
+  files-node-modules:
+
+=======
+>>>>>>> origin/SC04-oquiz-MichaelMaille
